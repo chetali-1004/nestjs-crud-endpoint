@@ -15,28 +15,32 @@ export class VoucherService {
 
   // Create a new voucher
   async createVoucher(dto: VoucherDto): Promise<Voucher> {
-    const existingVoucher = await this.prisma.voucher.findUnique({
+    const voucherWithSameCode = await this.prisma.voucher.findUnique({
       where: {
         code: dto.code,
       },
     });
 
-    if (existingVoucher) {
-      this.logger.warn(`Voucher with code ${dto.code} already exists.`);
+    if (voucherWithSameCode) {
+      this.logger.warn(
+        `Voucher creation failed. Code: ${dto.code} already exists.`,
+      );
       throw new ConflictException(
-        `Voucher with code ${dto.code} already exists.`,
+        `Voucher creation failed. Code: ${dto.code} already exists.`,
       );
     }
 
-    if (!this.isValidVoucher(dto)) {
-      this.logger.error(`Invalid date range for voucher code : ${dto.code}`);
+    if (!this.isVoucherDateRangeValid(dto)) {
+      this.logger.error(
+        `Voucher creation failed. Invalid date range for voucher code: ${dto.code}`,
+      );
       throw new ConflictException(
-        `Invalid date range for voucher code : ${dto.code}`,
+        `Voucher creation failed. Invalid date range for voucher code: ${dto.code}`,
       );
     }
 
     try {
-      const createVoucher = await this.prisma.voucher.create({
+      const newVoucher = await this.prisma.voucher.create({
         data: {
           code: dto.code,
           discount: dto.discount,
@@ -46,31 +50,35 @@ export class VoucherService {
       });
 
       this.logger.log(`Voucher with code ${dto.code} created successfully.`);
-      return createVoucher;
+      return newVoucher;
     } catch (error) {
       this.logger.error(
-        `Error creating voucher : ${error.message}`,
+        `Voucher creation failed for code: ${dto.code}. Error: ${error.message}`,
         error.stack,
       );
-      throw new Error('Failed to create voucher.');
+      throw new Error('Failed to create voucher. Please try again later.');
     }
   }
 
   // Update an existing voucher by its code
   async updateVoucher(code: string, dto: VoucherDto): Promise<Voucher> {
-    const existingVoucher = await this.prisma.voucher.findUnique({
+    const voucherToUpdate = await this.prisma.voucher.findUnique({
       where: { code },
     });
 
-    if (!existingVoucher) {
-      this.logger.warn(`Voucher with code ${code} not found.`);
-      throw new NotFoundException(`Voucher with code ${code} not found.`);
+    if (!voucherToUpdate) {
+      this.logger.warn(`Voucher update failed. Code: ${code} not found.`);
+      throw new NotFoundException(
+        `Voucher update failed. Code: ${code} not found.`,
+      );
     }
 
-    if (!this.isValidVoucher(dto)) {
-      this.logger.error(`Invalid date range for voucher code : ${dto.code}`);
+    if (!this.isVoucherDateRangeValid(dto)) {
+      this.logger.error(
+        `Voucher update failed. Invalid date range for voucher code: ${dto.code}`,
+      );
       throw new ConflictException(
-        `Invalid date range for voucher code : ${dto.code}`,
+        `Voucher update failed. Invalid date range for voucher code: ${dto.code}`,
       );
     }
 
@@ -88,7 +96,7 @@ export class VoucherService {
       return updatedVoucher;
     } catch (error) {
       this.logger.error(
-        `Error updating voucher: ${error.message}`,
+        `Voucher update failed for code: ${code}. Error: ${error.message}`,
         error.stack,
       );
       throw new Error('Failed to update voucher. Please try again later.');
@@ -97,13 +105,15 @@ export class VoucherService {
 
   // Delete a voucher by its code
   async deleteVoucher(code: string): Promise<{ message: string }> {
-    const existingVoucher = await this.prisma.voucher.findUnique({
+    const voucherToDelete = await this.prisma.voucher.findUnique({
       where: { code },
     });
 
-    if (!existingVoucher) {
-      this.logger.warn(`Voucher with code ${code} not found.`);
-      throw new NotFoundException(`Voucher with code ${code} not found.`);
+    if (!voucherToDelete) {
+      this.logger.warn(`Voucher deletion failed. Code: ${code} not found.`);
+      throw new NotFoundException(
+        `Voucher deletion failed. Code: ${code} not found.`,
+      );
     }
 
     try {
@@ -115,7 +125,7 @@ export class VoucherService {
       return { message: `Voucher with code ${code} deleted successfully.` };
     } catch (error) {
       this.logger.error(
-        `Error deleting voucher: ${error.message}`,
+        `Voucher deletion failed for code: ${code}. Error: ${error.message}`,
         error.stack,
       );
       throw new Error('Failed to delete voucher. Please try again later.');
@@ -164,7 +174,7 @@ export class VoucherService {
   }
 
   // Check if a voucher is valid
-  isValidVoucher(dto: VoucherDto) {
+  isVoucherDateRangeValid(dto: VoucherDto) {
     const currentDate = new Date();
     if (
       new Date(dto.startDate) < currentDate ||
