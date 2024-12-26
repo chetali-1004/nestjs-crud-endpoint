@@ -10,38 +10,42 @@ import {
 } from '@nestjs/common';
 import { VoucherService } from './voucher.service';
 import { VoucherDto } from './dto';
+import { Voucher } from '@prisma/client';
 
 @Controller('voucher')
 export class VoucherController {
   constructor(private voucherService: VoucherService) {}
 
   // Create a new voucher
-  @Post('create')
-  createVoucher(@Body() dto: VoucherDto) {
+  @Post()
+  createVoucher(@Body() dto: VoucherDto): Promise<Voucher> {
     return this.voucherService.createVoucher(dto);
   }
 
   // Update an existing voucher
-  @Patch('update/:code')
-  updateVoucher(@Param('code') code: string, @Body() dto: VoucherDto) {
+  @Patch('update')
+  updateVoucher(
+    @Query('code') code: string,
+    @Body() dto: VoucherDto,
+  ): Promise<Voucher> {
     return this.voucherService.updateVoucher(code, dto);
   }
 
   // Delete a voucher by its code
-  @Delete('delete/:code')
-  deleteVoucher(@Param('code') code: string) {
+  @Delete('delete')
+  deleteVoucher(@Query('code') code: string): Promise<{ message: string }> {
     return this.voucherService.deleteVoucher(code);
   }
 
-  // Retrieve all vouchers (or a specific one if needed)
-  @Get('all')
-  getAllVouchers() {
+  // Retrieve all vouchers
+  @Get()
+  getAllVouchers(): Promise<Voucher[]> {
     return this.voucherService.getAllVouchers();
   }
 
   // Retrieve a specific voucher by its code
   @Get(':code')
-  getVoucherByCode(@Param('code') code: string) {
+  getVoucherByCode(@Param('code') code: string): Promise<Voucher> {
     return this.voucherService.getVoucherByCode(code);
   }
 }
