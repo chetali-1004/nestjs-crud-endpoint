@@ -13,27 +13,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  email     String   @unique
-  hash      String
-
-  firstName String?
-  lastName  String?
-
-  @@map("users")
-}
-
 model Voucher {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  discount  Float
-  startDate DateTime
-  endDate   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  code               String   @unique
+  discount           Float
+  type               String
+  target             String
+  applicableProducts String[] @default([])
+  startDate          DateTime
+  endDate            DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("vouchers")
 }

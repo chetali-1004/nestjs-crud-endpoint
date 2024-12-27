@@ -43,6 +43,9 @@ export class VoucherService {
       const newVoucher = await this.prisma.voucher.create({
         data: {
           code: dto.code,
+          type: dto.type,
+          target: dto.target,
+          applicableProducts: dto.applicableProducts,
           discount: dto.discount,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
@@ -86,6 +89,10 @@ export class VoucherService {
       const updatedVoucher = await this.prisma.voucher.update({
         where: { code },
         data: {
+          code: dto.code,
+          type: dto.type,
+          target: dto.target,
+          applicableProducts: dto.applicableProducts,
           discount: dto.discount,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),

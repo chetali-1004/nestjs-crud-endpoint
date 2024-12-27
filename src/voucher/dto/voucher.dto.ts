@@ -5,63 +5,42 @@ import {
   Min,
   Max,
   IsDateString,
-  MinDate,
-  ValidatorConstraint,
-  ValidatorConstraintInterface,
-  ValidationArguments,
-  registerDecorator,
+  IsIn,
+  IsArray,
 } from 'class-validator';
-
-@ValidatorConstraint({ async: false })
-export class IsEndDateAfterStartDateConstraint
-  implements ValidatorConstraintInterface
-{
-  validate(endDate: string, args: ValidationArguments) {
-    const startDate = args.object['startDate'];
-    return new Date(endDate) > new Date(startDate);
-  }
-
-  defaultMessage(args: ValidationArguments) {
-    return 'End date must be after start date';
-  }
-}
-
-export function IsEndDateAfterStartDate(validationOptions?: any) {
-  return function (object: Object, propertyName: string) {
-    registerDecorator({
-      name: 'IsEndDateAfterStartDate',
-      target: object.constructor,
-      propertyName: propertyName,
-      options: validationOptions,
-      constraints: [],
-      validator: IsEndDateAfterStartDateConstraint,
-    });
-  };
-}
+import { IsEndDateAfterStartDate } from 'src/validator/is-end-date-after-start-date.validator';
+import { IsFutureDate } from 'src/validator/is-future-date.validator';
 
 export class VoucherDto {
   @IsString()
   @IsNotEmpty()
   code?: string;
 
+  @IsIn(['percentage', 'fixed', 'free_shipping'], {
+    message: "Type must be one of 'percentage', 'fixed', or 'free_shipping'",
+  })
+  type: 'percentage' | 'fixed' | 'free_shipping';
+
+  @IsIn(['product', 'shipping', 'cart'], {
+    message: "Target must be one of 'product', 'shipping', or 'cart'",
+  })
+  target: 'product' | 'shipping' | 'cart';
+
+  applicableProducts?: string[];
+
   @IsNumber()
   @IsNotEmpty()
   @Min(1, { message: 'Discount must be greater than 0' })
   @Max(100, { message: 'Discount must be less than or equal to 100' })
-  discount: number;
+  discount?: number;
 
   @IsDateString()
   @IsNotEmpty({ message: 'Start date is required' })
-  // @MinDate(() => new Date(Date.now()), {
-  //   message: 'Start date must not be in the past',
-  // })
+  @IsFutureDate({ message: 'Start date must be in the future' })
   startDate?: string;
 
   @IsDateString()
   @IsNotEmpty({ message: 'End date is required' })
-  // @MinDate(() => new Date(Date.now()), {
-  //   message: 'End date must not be in the past',
-  // })
   @IsEndDateAfterStartDate({ message: 'End date must be after the start date' })
   endDate?: string;
 }
