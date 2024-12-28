@@ -14,18 +14,45 @@ datasource db {
 }
 
 model Voucher {
-  id                 Int      @id @default(autoincrement())
-  code               String   @unique
+  id                 Int           @id @default(autoincrement())
+  code               String        @unique
   discount           Float
   type               String
   target             String
-  applicableProducts String[] @default([])
+  applicableProducts String[]      @default([])
   startDate          DateTime
   endDate            DateTime
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  maxUsesPerUser     Int           @default(1)
+  maxUses            Int           @default(1)
+  allowedUsers       String[]      @default([])
+  redeemableDays     String[]      @default([])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  redeemedBy         UserVoucher[] // Relation to the linking table
 
   @@map("vouchers")
 }
 
-// one bookmark can belong to only one user but one user can have many bookmarks
+model User {
+  id               Int           @id @default(autoincrement())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  email            String        @unique
+  hash             String
+  firstName        String?
+  lastName         String?
+  redeemedVouchers UserVoucher[]
+}
+
+model UserVoucher {
+  id         Int        @id @default(autoincrement())
+  userId     Int
+  voucherId  Int
+  redeemedAt DateTime[] @default([])
+  useCount   Int        @default(0)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voucher    Voucher    @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, voucherId])
+  @@map("user_vouchers")
+}
