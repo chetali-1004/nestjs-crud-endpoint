@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -210,6 +211,65 @@ export class VoucherService {
       );
       throw new Error('Failed to retrieve voucher. Please try again later.');
     }
+  }
+
+  async redeemVoucher(
+    userId: number,
+    voucherCode: string,
+  ): Promise<{ message: string }> {
+    const voucher = await this.prisma.voucher.findUnique({
+      where: {
+        code: voucherCode,
+      },
+    });
+    if (!voucher) {
+      throw new NotFoundException(
+        `Voucher with code ${voucherCode} not found.`,
+      );
+    }
+    const currentDate = new Date();
+    if (
+      new Date(voucher.startDate) > currentDate ||
+      new Date(voucher.endDate) < currentDate
+    ) {
+      throw new BadRequestException(
+        `Voucher with code ${voucherCode} is not active.`,
+      );
+    }
+
+    const userVoucher = await this.prisma.userVoucher.findUnique({
+      where: {
+        userId_voucherId: {
+          userId,
+          voucherId: voucher.id,
+        },
+      },
+    });
+
+    if (userVoucher && userVoucher.useCount >= voucher.maxUsesPerUser) {
+      throw new BadRequestException(
+        `Maxiumum redemption limit for ${voucherCode} reached.`,
+      );
+    }
+    if (userVoucher) {
+      await this.prisma.userVoucher.update({
+        where: { id: userVoucher.id },
+        data: {
+          useCount: userVoucher.useCount + 1,
+          redeemedAt: [...userVoucher.redeemedAt, currentDate],
+        },
+      });
+    } else {
+      await this.prisma.userVoucher.create({
+        data: {
+          userId,
+          voucherId: voucher.id,
+          useCount: 1,
+          redeemedAt: [currentDate],
+        },
+      });
+    }
+    return { message: 'Voucher redeemed successfully' };
   }
 
   // Check if a voucher is valid

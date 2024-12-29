@@ -11,6 +11,7 @@ import {
 import { VoucherService } from './voucher.service';
 import { VoucherDto } from './dto';
 import { Voucher } from '@prisma/client';
+import { RedeemVoucherDto } from './dto/redeem-voucher.dto';
 
 @Controller('voucher')
 export class VoucherController {
@@ -47,5 +48,10 @@ export class VoucherController {
   @Get(':code')
   getVoucherByCode(@Param('code') code: string): Promise<Voucher> {
     return this.voucherService.getVoucherByCode(code);
+  }
+
+  @Post('redeem')
+  redeemVoucher(@Body() dto: RedeemVoucherDto): Promise<{ message: string }> {
+    return this.voucherService.redeemVoucher(dto.userId, dto.code);
   }
 }
