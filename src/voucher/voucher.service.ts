@@ -39,16 +39,39 @@ export class VoucherService {
       );
     }
 
+    if (
+      dto.target === 'product' &&
+      (!dto.applicableProducts || dto.applicableProducts.length === 0)
+    ) {
+      this.logger.error(
+        `Voucher creation failed. Applicable products are required when the target is 'product'.`,
+      );
+      throw new ConflictException(
+        `Voucher creation failed. Applicable products are required when the target is 'product'.`,
+      );
+    }
+
     try {
       const newVoucher = await this.prisma.voucher.create({
         data: {
           code: dto.code,
           type: dto.type,
           target: dto.target,
-          applicableProducts: dto.applicableProducts,
-          discount: dto.discount,
+          applicableProducts: dto.applicableProducts
+            ? [...dto.applicableProducts]
+            : [],
+          discount:
+            dto.type === 'percentage'
+              ? dto.percentageDiscount
+              : dto.fixedDiscount,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
+          maxUses: dto.maxUses,
+          maxUsesPerUser: dto.maxUsesPerUser ?? 1,
+          allowedUsers: dto.allowedUsers ?? [],
+          redeemableDays: dto.redeemableDays ?? [],
+          minCartValue: dto.minCartValue,
+          maxDiscountAmount: dto.maxDiscountAmount,
         },
       });
 
@@ -93,9 +116,18 @@ export class VoucherService {
           type: dto.type,
           target: dto.target,
           applicableProducts: dto.applicableProducts,
-          discount: dto.discount,
+          discount:
+            dto.type === 'percentage'
+              ? dto.percentageDiscount
+              : dto.fixedDiscount,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
+          maxUses: dto.maxUses,
+          maxUsesPerUser: dto.maxUsesPerUser ?? 1,
+          allowedUsers: dto.allowedUsers ?? [],
+          redeemableDays: dto.redeemableDays ?? [],
+          minCartValue: dto.minCartValue,
+          maxDiscountAmount: dto.maxDiscountAmount,
         },
       });
 

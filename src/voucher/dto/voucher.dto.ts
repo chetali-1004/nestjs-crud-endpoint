@@ -7,9 +7,11 @@ import {
   IsDateString,
   IsIn,
   IsArray,
+  ValidateIf,
 } from 'class-validator';
 import { IsEndDateAfterStartDate } from 'src/validator/is-end-date-after-start-date.validator';
 import { IsFutureDate } from 'src/validator/is-future-date.validator';
+// import { IsDiscountRequiredIfTypeConstraint } from 'src/validator/is-discount-required-if-type.validator';
 
 export class VoucherDto {
   @IsString()
@@ -26,13 +28,19 @@ export class VoucherDto {
   })
   target: 'product' | 'shipping' | 'cart';
 
+  @ValidateIf((o) => o.target === 'product')
+  // @IsArray({ message: 'Applicable products must be an array of strings' })
   applicableProducts?: string[];
 
   @IsNumber()
-  @IsNotEmpty()
   @Min(1, { message: 'Discount must be greater than 0' })
   @Max(100, { message: 'Discount must be less than or equal to 100' })
-  discount?: number;
+  @ValidateIf((o: any) => o.type === 'percentage')
+  percentageDiscount?: number;
+
+  @ValidateIf((o: any) => o.type === 'fixed')
+  @IsNumber()
+  fixedDiscount?: number;
 
   @IsDateString()
   @IsNotEmpty({ message: 'Start date is required' })
@@ -43,4 +51,16 @@ export class VoucherDto {
   @IsNotEmpty({ message: 'End date is required' })
   @IsEndDateAfterStartDate({ message: 'End date must be after the start date' })
   endDate?: string;
+
+  allowedUsers?: string[];
+
+  maxUsesPerUser?: number;
+
+  minCartValue?: number;
+  maxDiscountAmount?: number;
+
+  @IsNumber()
+  maxUses: number;
+
+  redeemableDays?: string[];
 }

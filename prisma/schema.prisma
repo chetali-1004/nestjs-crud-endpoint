@@ -19,11 +19,13 @@ model Voucher {
   discount           Float
   type               String
   target             String
-  applicableProducts String[]      @default([])
+  applicableProducts String[]
   startDate          DateTime
   endDate            DateTime
   maxUsesPerUser     Int           @default(1)
   maxUses            Int           @default(1)
+  minCartValue       Float         @default(0)
+  maxDiscountAmount  Float         @default(0)
   allowedUsers       String[]      @default([])
   redeemableDays     String[]      @default([])
   createdAt          DateTime      @default(now())
