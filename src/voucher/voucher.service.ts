@@ -215,7 +215,9 @@ export class VoucherService {
     }
   }
 
-  async redeemVoucher(dto: RedeemVoucherDto): Promise<{ message: string }> {
+  async redeemVoucher(
+    dto: RedeemVoucherDto,
+  ): Promise<{ message: string; newCartValue: number }> {
     const voucher = await this.prisma.voucher.findUnique({
       where: {
         code: dto.code,
@@ -312,9 +314,28 @@ export class VoucherService {
         },
       });
     }
-
-    // const newCartValue = dto.cartValue-discountValue;
-    return { message: 'Voucher redeemed successfully' };
+    let discountValue = 0;
+    if (voucher.type === 'percentage') {
+      if (voucher.maxDiscountAmount === 0) {
+        discountValue = (voucher.discount / 100) * dto.cartValue;
+      } else {
+        discountValue = Math.min(
+          (voucher.discount / 100) * dto.cartValue,
+          voucher.maxDiscountAmount,
+        );
+      }
+    } else if (voucher.type === 'fixed') {
+      discountValue = voucher.discount;
+    } else if (voucher.type === 'free_shipping') {
+      discountValue = dto.shippingCost;
+    } else {
+      throw new BadRequestException('Invalid voucher type.');
+    }
+    let newCartValue = dto.cartValue - discountValue;
+    if (newCartValue < 0) {
+      newCartValue = 0;
+    }
+    return { message: 'Voucher redeemed successfully', newCartValue };
   }
 
   // Check if a voucher is valid

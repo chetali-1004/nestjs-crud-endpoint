@@ -14,4 +14,6 @@ export class RedeemVoucherDto {
   cartValue: number;
 
   productsInCart: string[];
+
+  shippingCost: number;
 }
