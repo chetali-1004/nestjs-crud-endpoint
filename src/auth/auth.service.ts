@@ -1,5 +1,4 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { User } from '@prisma/client';
 import { AuthDto } from './dto';
 import * as argon from 'argon2';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -16,15 +15,22 @@ export class AuthService {
   ) {}
 
   async signup(dto: AuthDto) {
+    let role = 'USER';
+    if (dto.adminKey && dto.adminKey === process.env.ADMIN_SECRET) {
+      role = 'ADMIN';
+    } else if (dto.adminKey) {
+      throw new ForbiddenException('Invalid admin key');
+    }
     const hash = await argon.hash(dto.password);
     try {
       const user = await this.prisma.user.create({
         data: {
           email: dto.email,
           hash,
+          role,
         },
       });
-      return this.signToken(user.id, user.email);
+      return this.signToken(user.id, user.email, user.role);
     } catch (err) {
       if (err instanceof PrismaClientKnownRequestError) {
         if (err.code === 'P2002') {
@@ -49,16 +55,45 @@ export class AuthService {
     if (!passwordMatch) {
       throw new ForbiddenException('Invalid email or password');
     }
-    return this.signToken(user.id, user.email);
+    return this.signToken(user.id, user.email, user.role);
   }
 
+  async promoteToAdmin(userEmail: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+
+      if (!user) {
+        throw new ForbiddenException('User not found.');
+      }
+
+      if (user.role === 'ADMIN') {
+        throw new ForbiddenException('User is already an ADMIN.');
+      }
+
+      return this.prisma.user.update({
+        where: { email: userEmail },
+        data: { role: 'ADMIN' },
+      });
+    } catch (err) {
+      if (err instanceof PrismaClientKnownRequestError) {
+        if (err.code === 'P2025') {
+          throw new ForbiddenException('User not found.');
+        }
+      }
+      throw new ForbiddenException('Failed to promote user to ADMIN.');
+    }
+  }
   async signToken(
     userId: number,
     email: string,
+    role: string,
   ): Promise<{ access_token: string }> {
     const payload = {
       sub: userId,
       email,
+      role,
     };
     const secret = this.config.get('JWT_SECRET');
     const token = await this.jwt.signAsync(payload, {

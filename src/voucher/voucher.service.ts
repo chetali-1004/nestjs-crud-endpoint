@@ -1,13 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service'; // Import your Prisma service
+import { PrismaService } from '../prisma/prisma.service';
 import { VoucherDto } from './dto';
 import { Voucher } from '@prisma/client';
+import { RedeemVoucherDto } from './dto/redeem-voucher.dto';
 
 @Injectable()
 export class VoucherService {
@@ -213,34 +215,75 @@ export class VoucherService {
     }
   }
 
-  async redeemVoucher(
-    userId: number,
-    voucherCode: string,
-  ): Promise<{ message: string }> {
+  async redeemVoucher(dto: RedeemVoucherDto): Promise<{ message: string }> {
     const voucher = await this.prisma.voucher.findUnique({
       where: {
-        code: voucherCode,
+        code: dto.code,
       },
     });
     if (!voucher) {
-      throw new NotFoundException(
-        `Voucher with code ${voucherCode} not found.`,
-      );
+      throw new NotFoundException(`Voucher with code ${dto.code} not found.`);
     }
     const currentDate = new Date();
+    const days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    const dayIndex = currentDate.getDay();
+    const dayString = days[dayIndex];
     if (
       new Date(voucher.startDate) > currentDate ||
       new Date(voucher.endDate) < currentDate
     ) {
       throw new BadRequestException(
-        `Voucher with code ${voucherCode} is not active.`,
+        `Voucher with code ${dto.code} is not active.`,
       );
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: dto.userId,
+      },
+    });
+
+    if (
+      voucher.allowedUsers.length > 0 &&
+      !voucher.allowedUsers.includes(user.email)
+    ) {
+      throw new ForbiddenException('User not allowed to redeem this voucher.');
+    }
+
+    if (
+      voucher.redeemableDays.length > 0 &&
+      !voucher.redeemableDays.includes(dayString)
+    ) {
+      throw new ForbiddenException('Voucher cannot be redeemed today');
+    }
+    if (dto.cartValue < voucher.minCartValue) {
+      throw new BadRequestException(
+        'Cart value is less than the minimum cart value required to redeem this voucher',
+      );
+    }
+
+    if (
+      voucher.applicableProducts.length > 0 &&
+      !voucher.applicableProducts.every((product) =>
+        voucher.applicableProducts.includes(product),
+      )
+    ) {
+      throw new BadRequestException(
+        'Cart does not contain all the products on which the voucher is redeemable',
+      );
+    }
     const userVoucher = await this.prisma.userVoucher.findUnique({
       where: {
         userId_voucherId: {
-          userId,
+          userId: dto.userId,
           voucherId: voucher.id,
         },
       },
@@ -248,7 +291,7 @@ export class VoucherService {
 
     if (userVoucher && userVoucher.useCount >= voucher.maxUsesPerUser) {
       throw new BadRequestException(
-        `Maxiumum redemption limit for ${voucherCode} reached.`,
+        `Maxiumum redemption limit for ${dto.code} reached.`,
       );
     }
     if (userVoucher) {
@@ -262,13 +305,15 @@ export class VoucherService {
     } else {
       await this.prisma.userVoucher.create({
         data: {
-          userId,
+          userId: dto.userId,
           voucherId: voucher.id,
           useCount: 1,
           redeemedAt: [currentDate],
         },
       });
     }
+
+    // const newCartValue = dto.cartValue-discountValue;
     return { message: 'Voucher redeemed successfully' };
   }
 

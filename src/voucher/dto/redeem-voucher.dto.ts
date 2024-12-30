@@ -8,4 +8,10 @@ export class RedeemVoucherDto {
   @IsString()
   @IsNotEmpty()
   code: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  cartValue: number;
+
+  productsInCart: string[];
 }

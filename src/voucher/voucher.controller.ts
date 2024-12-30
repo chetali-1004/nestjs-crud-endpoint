@@ -7,11 +7,14 @@ import {
   Post,
   Get,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { VoucherService } from './voucher.service';
 import { VoucherDto } from './dto';
 import { Voucher } from '@prisma/client';
 import { RedeemVoucherDto } from './dto/redeem-voucher.dto';
+import { Roles } from 'src/auth/decorator/roles.decorator';
+import { RolesGuard } from 'src/auth/guard';
 
 @Controller('voucher')
 export class VoucherController {
@@ -19,12 +22,16 @@ export class VoucherController {
 
   // Create a new voucher
   @Post()
+  @Roles('ADMIN')
+  @UseGuards(RolesGuard)
   createVoucher(@Body() dto: VoucherDto): Promise<Voucher> {
     return this.voucherService.createVoucher(dto);
   }
 
   // Update an existing voucher
   @Patch('update')
+  @Roles('ADMIN')
+  @UseGuards(RolesGuard)
   updateVoucher(
     @Query('code') code: string,
     @Body() dto: VoucherDto,
@@ -34,6 +41,8 @@ export class VoucherController {
 
   // Delete a voucher by its code
   @Delete('delete')
+  @Roles('ADMIN')
+  @UseGuards(RolesGuard)
   deleteVoucher(@Query('code') code: string): Promise<{ message: string }> {
     return this.voucherService.deleteVoucher(code);
   }
@@ -52,6 +61,6 @@ export class VoucherController {
 
   @Post('redeem')
   redeemVoucher(@Body() dto: RedeemVoucherDto): Promise<{ message: string }> {
-    return this.voucherService.redeemVoucher(dto.userId, dto.code);
+    return this.voucherService.redeemVoucher(dto);
   }
 }
